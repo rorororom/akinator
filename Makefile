@@ -37,7 +37,7 @@ run:
 
 run_and_gen_image:
 	./$(EXECUTABLE)
-	dot -Tpng /Users/aleksandr/Desktop/akinator/graph.dot -o file.png
+	dot -Tpng /Users/aleksandr/Desktop/akinator/grapth.dot -o file.png
 
 clean:
 	rm -f $(EXECUTABLE) $(OBJECTS)
