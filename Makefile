@@ -14,9 +14,7 @@ CXXFLAGS =  -D _DEBUG -ggdb3 -std=c++17 -O0 -Wall -Wextra -Weffc++ -Waggressive-
 			-fstack-protector -fstrict-overflow -fno-omit-frame-pointer -Wlarger-than=8192         \
 			-Wstack-usage=8192 -fsanitize=address -fsanitize=undefined -fPIE -Werror=vla
 
-SOURCES = tree.cpp
-#SOURCES = main.cpp akinator.cpp stack.cpp log_funcs.cpp
-#SOURCES = akAn.cpp
+SOURCES = main.cpp akinator.cpp stack.cpp log_funcs.cpp command_args.cpp
 OBJECTS = $(SOURCES:%.cpp=%.o)
 EXECUTABLE = akinator.out
 
@@ -35,7 +33,7 @@ $(OBJ_DIR)/%.o: %.cpp
 	$(CXX) -c $< -o $@ $(CXXFLAGS)
 
 run:
-	./$(EXECUTABLE)
+	./$(EXECUTABLE) -b DataBase.txt -f printoutAK.txt -m 1
 
 run_and_gen_image:
 	./$(EXECUTABLE)

@@ -3,13 +3,142 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
+#include <stdarg.h>
 
 #include "stack.h"
 #include "akinator.h"
+#include "command_args.h"
 
-int CheckCommand(char c)
+static void Akinator(NodeAkinator** nowNode);
+static int GetValidAnswerAkinator(NodeAkinator** nowNode);
+static int CheckAnswerAkinator(char answer);
+static void AddNewObjectToAkinator(NodeAkinator** nowNode);
+static int SearchingItemCharacteristics(Stack* myStack, NodeAkinator* node, const char* value);
+static void CompareAndAsk(NodeAkinator** nowNode, char newObj[], char newStr[]);
+
+static void PrintCommand();
+
+static void CompareObjects(TreeAkinator* tree);
+static void ProcessCompareSign(Stack* myStackComparison, Stack* myStackComp,
+                               Stack* myStackComp2, NodeAkinator** nowNode);
+
+static void DistinctiveFeatureSubject(Stack* myStackComparison, Stack* myStackComp, NodeAkinator* nowNode,
+                                      const char request[], const char* conjunction);
+static void ReadObject(char request[]);
+static void ReadObjectUntilValid(char request[], TreeAkinator* tree, Stack* myStack);
+
+static int GetMenuCommand(char command);
+
+static void ObjectDefinition(TreeAkinator* tree);
+
+static void CtorInDelete(TreeAkinator* tree);
+static void InitializeAkinatorNode(NodeAkinator* node, const char value[],
+                                   NodeAkinator* left, NodeAkinator* right);
+
+static void DestroyNode(NodeAkinator* node);
+
+static void PrintNodeAkinarot(NodeAkinator* node, FILE* file);
+static void SaveTreeToFile(NodeAkinator* root);
+
+static void PrintNodeAkinarotConsol(NodeAkinator* node);
+static void PrintValue(const char* value, int i, int size, int negate);
+static void PrintNodeDump(FILE* dotFile, NodeAkinator* node, const char* fillColor);
+
+void AkinatorSayString(const char* format, ...);
+
+void BuildTreeFromFile(const char* filename, TreeAkinator* tree)
 {
-    switch (c) {
+    FILE* file = fopen(filename, "r");
+    if (file == nullptr)
+    {
+        printf("Ошибка при открытии файла.\n");
+    }
+
+    tree->rootTree = BuildTree(file);
+
+    if (tree->rootTree == NULL)
+    {
+        AKINATOR_PRINT_STRING("Файл пустой или содержит только пробелы. Дерево не заполнено.\n");
+        CtorRoot(tree);
+    }
+}
+
+void CtorRoot(TreeAkinator* tree)
+{
+    CREAT_NODE(newNode);
+
+    strcpy(newNode->value, "неизвесто что");
+    newNode->left = NULL;
+    newNode->right = NULL;
+
+    tree->rootTree = newNode;
+}
+
+static void PrintCommand()
+{
+    printf("Команды(английскими буквами):\n"
+            "\t[a] - игра Акинатор,\n"
+            "\t[d] - удаление базы данных,\n"
+            "\t[b] - построение определения объекта\n"
+            "\t[c] - сравнение объектов\n"
+            "\t[p] - создание графического дерева\n"
+            "\t[s] - сохранить изменения\n"
+            "\t[e] - выйти из программы\n");
+}
+
+void RunAkinatorMenuLoop(TreeAkinator* tree)
+{
+    assert(tree);
+
+    PrintCommand();
+    char entered = 0;
+    scanf(" %c", &entered);
+    int mode = GetMenuCommand(entered);
+
+    if(mode == EXIT) return;
+
+    do {
+        while(mode == INCORRECT)
+        {
+            AKINATOR_PRINT_STRING("Некорректная команда. Пожалуйста, введите правильную команду.\n");
+            PrintCommand();
+            scanf(" %c", &entered);
+            mode = GetMenuCommand(entered);
+        }
+        switch(mode)
+        {
+            case AKINATOR:
+                Akinator(&tree->rootTree);
+                break;
+            case DELETE:
+                TreeDtor(tree);
+                BuildTreeFromFile(FILENAME_DATA_BASE, tree);
+                SaveTreeToFile(tree->rootTree);
+                break;
+            case DEFENITION:
+                ObjectDefinition(tree);
+                break;
+            case COMPARISON:
+                CompareObjects(tree);
+                break;
+            case PICTURE:
+                GenerateImage(tree);
+                GenerateGraphImage();
+            case SAVE:
+                SaveTreeToFile(tree->rootTree);
+                break;
+        }
+        printf("\n");
+        PrintCommand();
+
+        scanf(" %c", &entered);
+        mode = GetMenuCommand(entered);
+    } while (mode != EXIT);
+}
+
+static int GetMenuCommand(char command)
+{
+    switch (command) {
         case 'a':
             return AKINATOR;
         case 'd':
@@ -22,26 +151,22 @@ int CheckCommand(char c)
             return SAVE;
         case 'e':
             return EXIT;
+        case 'p':
+            return PICTURE;
         default:
-            return -1;
+            return INCORRECT;
     }
 }
 
-void CreateNewGraph()
+void GenerateGraphImage()
 {
-    char command[1000];
+    char command[MAX_LEN] = "";
     sprintf(command, "dot -Tpng /Users/aleksandr/Desktop/akinator/grapth.dot -o /Users/aleksandr/Desktop/akinator/file.png");
     system(command);
 }
 
-void DestroyNode(NodeAkinator* node)
+static void DestroyNode(NodeAkinator* node)
 {
-    assert(node);
-
-    if (node == nullptr) {
-        return;
-    }
-
     if (node->left != nullptr) {
         DestroyNode(node->left);
     }
@@ -52,35 +177,40 @@ void DestroyNode(NodeAkinator* node)
     free(node);
 }
 
-void TreeDtor(TreeAkinator* tree)
+static void InitializeAkinatorNode(NodeAkinator* node, const char value[], NodeAkinator* left, NodeAkinator* right)
 {
-    DestroyNode(tree->RootTree);
-    tree->RootTree = nullptr;
+    assert(node);
+
+    strcpy(node->value, value);
+    node->left = left;
+    node->right = right;
+
 }
 
-void CtorInDelete(TreeAkinator* tree)
+void TreeDtor(TreeAkinator* tree)
+{
+    DestroyNode(tree->rootTree);
+    tree->rootTree = nullptr;
+
+    CtorRoot(tree);
+}
+
+static void CtorInDelete(TreeAkinator* tree)
 {
     assert(tree);
     TreeDtor(tree);
 
-    NodeAkinator* newNode = (NodeAkinator*)malloc(sizeof(NodeAkinator));
-    if (newNode == nullptr) {
-        printf("не выделилась память для структуры\n");
-    }
-
-    strcpy(newNode->value, "неизвестно что");
-
-    newNode->left = nullptr;
-    newNode->right = nullptr;
-    tree->RootTree = newNode;
+    CREAT_NODE(newNode);
+    CtorRoot(tree);
 }
 
-void PrintNodeDump(FILE* dotFile, NodeAkinator* node, const char* fillColor)
+static void PrintNodeDump(FILE* dotFile, NodeAkinator* node, const char* fillColor)
 {
     assert(dotFile);
     assert(node);
 
-    if (node == NULL) {
+    if (node == NULL)
+    {
         return;
     }
 
@@ -88,17 +218,34 @@ void PrintNodeDump(FILE* dotFile, NodeAkinator* node, const char* fillColor)
                           fillcolor=\"%s\", fontsize=14, label=\" %s \"];\n",
                           node, fillColor, node->value);
 
-    if (node->left != NULL) {
+    if (node->left != NULL)
+    {
         fprintf(dotFile, "\t%d -> %d;\n", node, node->left);
         PrintNodeDump(dotFile, node->left, "#6495ed");
     }
 
-    if (node->right != NULL) {
+    if (node->right != NULL)
+    {
         fprintf(dotFile, "\t%d -> %d;\n", node, node->right);
         PrintNodeDump(dotFile, node->right, "#bba6cd");
     }
 }
 
+void AkinatorSayString(const char* format, ...)
+{
+    va_list argList;
+
+    va_start(argList, format);
+
+    static const size_t  maxStringLength  =    1024;
+    static char  command[maxStringLength] =  "say ";
+    static const size_t sayShift = 4;
+
+    vsnprintf(command + sayShift, maxStringLength, format, argList);
+    system(command);
+
+    va_end(argList);
+}
 
 
 void GenerateImage(TreeAkinator* tree)
@@ -111,18 +258,18 @@ void GenerateImage(TreeAkinator* tree)
         fprintf(dotFile, "digraph tree {\n");
         fprintf(dotFile, "\tnode [shape=Mrecord, style=filled, fillcolor=\"#bba6cd\", color=\"#552d7b\"];\n");
 
-        PrintNodeDump(dotFile, tree->RootTree, "#d5a1a7");
+        PrintNodeDump(dotFile, tree->rootTree, "#d5a1a7");
 
         fprintf(dotFile, "}\n");
         fclose(dotFile);
     }
     else
     {
-        fprintf(stderr, "Ошибка при открытии файла graph.dot\n");
+        AKINATOR_PRINT_STRING("Ошибка при открытии файла graph.dot\n");
     }
 }
 
-void Akinator(NodeAkinator** nowNode)
+static void Akinator(NodeAkinator** nowNode)
 {
     assert(nowNode);
 
@@ -130,73 +277,109 @@ void Akinator(NodeAkinator** nowNode)
     {
         return;
     }
-    printf("\n\nВведите [y] - да, [n] - нет\n\n");
 
-    printf("Это %s?\n", (*nowNode)->value);
-    char s;
-    scanf(" %c", &s);
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF) { }
+    int mode = GetValidAnswerAkinator(&(*nowNode));
 
-    if (s == 'y')
+    if (mode == YES)
     {
         if ((*nowNode)->right == NULL)
         {
-            printf("СЮДАААА\n");
+            AKINATOR_PRINT_STRING("УРА УРА\n");
         }
         else
         {
             Akinator(&((*nowNode)->right));
         }
     }
-    else if (s == 'n')
+    else if (mode == NO)
     {
-        if ((*nowNode)->left == NULL)
+        AddNewObjectToAkinator(&(*nowNode));
+    }
+}
+
+static int GetValidAnswerAkinator(NodeAkinator** nowNode)
+{
+    printf("Введите [y] - да, [n] - нет\n");
+    AKINATOR_PRINT_STRING("Это %s?\n", &(*nowNode)->value);
+
+    char answer = 0;
+    scanf(" %c", &answer);
+
+    int entered = 0;
+    while ((entered = getchar()) != '\n' && entered != EOF) { }
+    int mode = CheckAnswerAkinator(answer);
+
+    while(mode == INCORRECT)
+    {
+        AKINATOR_PRINT_STRING("Некорректный ответ, введите заново.\n");
+        scanf(" %c", &answer);
+
+        int entered = 0;
+        while ((entered = getchar()) != '\n' && entered != EOF) { }
+        mode = CheckAnswerAkinator(answer);
+    }
+
+    return mode;
+}
+
+static void AddNewObjectToAkinator(NodeAkinator** nowNode)
+{
+    if ((*nowNode)->left == NULL)
+    {
+        char newObj[MAX_OBJECT_NAME_LENGTH] = "";
+        char newStr[MAX_OBJECT_NAME_LENGTH] = "";
+
+        CompareAndAsk(&(*nowNode), newObj, newStr);
+
+        ReadObject(newStr);
+        CREAT_NODE(newRoot);
+        InitializeAkinatorNode(newRoot, newStr, *nowNode, NULL);
+
+        CREAT_NODE(newObject);
+        InitializeAkinatorNode(newObject, newObj, NULL, NULL);
+
+        newRoot->right = newObject;
+        *nowNode = newRoot;
+    }
+    else
+    {
+        if ((*nowNode)->left != NULL)
         {
-            printf("Что или Кто это?\n");
-            char newObj[MAX_LEN];
-            fgets(newObj, MAX_LEN, stdin);
-
-            char newStr[MAX_LEN];
-            printf("Не знаю, что это. Чем %s отличается от твоего загаданного?\n", (*nowNode)->value);
-            fgets(newStr, MAX_LEN, stdin);
-
-            size_t len = strlen(newStr);
-            if (len > 0 && newStr[len - 1] == '\n')
-            {
-                newStr[len - 1] = '\0';
-            }
-
-            NodeAkinator* newRoot = (NodeAkinator*)malloc(sizeof(NodeAkinator));
-            strcpy(newRoot->value, newStr);
-            newRoot->left = *nowNode;
-            newRoot->right = NULL;
-
-            len = strlen(newObj);
-            if (len > 0 && newObj[len - 1] == '\n')
-            {
-                newObj[len - 1] = '\0';
-            }
-
-            NodeAkinator* newObject = (NodeAkinator*)malloc(sizeof(NodeAkinator));
-            strcpy(newObject->value, newObj);
-            newObject->left = NULL;
-            newObject->right = NULL;
-
-            newRoot->right = newObject;
-            *nowNode = newRoot;
-        }
-        else
-        {
-            if ((*nowNode)->left != NULL)
-            {
-                Akinator(&((*nowNode)->left));
-            }
+            Akinator(&((*nowNode)->left));
         }
     }
 }
 
-void PrintNodeAkinarot(NodeAkinator* node, FILE* file)
+static void CompareAndAsk(NodeAkinator** nowNode, char newObj[], char newStr[])
+{
+    if (MODE_ARG == ARG_MARIIA)
+    {
+        AKINATOR_PRINT_STRING("Что или Кто это?\n");
+        fgets(newObj, MAX_OBJECT_NAME_LENGTH, stdin);
+
+        ReadObject(newObj);
+        AKINATOR_PRINT_STRING("Не знаю, что это. Чем %s отличается от %s?\n", newObj, &(*nowNode)->value);
+        fgets(newStr, MAX_OBJECT_NAME_LENGTH, stdin);
+    }
+    else if (MODE_ARG == ARG_DED)
+    {
+        AKINATOR_PRINT_STRING("Не знаю, что это. Чем твое загаданное отличается от %s?\n", &(*nowNode)->value);
+        fgets(newStr, MAX_OBJECT_NAME_LENGTH, stdin);
+
+        ReadObject(newObj);
+        AKINATOR_PRINT_STRING("Что или Кто это?\n");
+        fgets(newObj, MAX_OBJECT_NAME_LENGTH, stdin);
+    }
+}
+
+static int CheckAnswerAkinator(char answer)
+{
+    if (answer == 'y') return YES;
+    else if (answer == 'n') return NO;
+    else return ERRROR_ANSWER;
+}
+
+static void PrintNodeAkinarot(NodeAkinator* node, FILE* file)
 {
     assert(file);
 
@@ -213,13 +396,14 @@ void PrintNodeAkinarot(NodeAkinator* node, FILE* file)
     fprintf(file, ") ");
 }
 
-void SaveTreeToFile(NodeAkinator* root)
+static void SaveTreeToFile(NodeAkinator* root)
 {
     assert(root);
 
-    FILE* file = fopen("printoutAK.txt", "w");
-    if (file == NULL) {
-        printf("Ошибка при открытии файла.\n");
+    FILE* file = fopen(FILENAME_FOR_WORK, "w");
+    if (file == NULL)
+    {
+        AKINATOR_PRINT_STRING("Ошибка при открытии файла.\n");
         return;
     }
 
@@ -227,11 +411,12 @@ void SaveTreeToFile(NodeAkinator* root)
     fclose(file);
 }
 
-void PrintNodeAkinarotConsol(NodeAkinator* node)
+static void PrintNodeAkinarotConsol(NodeAkinator* node)
 {
     assert(node);
 
-    if (node == NULL) {
+    if (node == NULL)
+    {
         printf("null\n");
         return;
     }
@@ -243,18 +428,20 @@ void PrintNodeAkinarotConsol(NodeAkinator* node)
     printf(") ");
 }
 
-NodeAkinator* buildTree(FILE* file)
+NodeAkinator* BuildTree(FILE* file)
 {
     assert(file);
 
-    char token[MAX_LEN];
+    char token[MAX_OBJECT_NAME_LENGTH] = "";
     int i = 0;
-    fscanf(file, "%s", token);
+    if (fscanf(file, "%s", token) == EOF) {
+        return NULL;
+    }
 
     if (strcmp(token, "(") == 0)
     {
-        char c;
-        token[MAX_LEN];
+        char c = 0;
+        token[MAX_OBJECT_NAME_LENGTH];
         while ((c = fgetc(file)) != EOF && c != '>')
         {
             if (c == '<')
@@ -263,7 +450,7 @@ NodeAkinator* buildTree(FILE* file)
                 continue;
             }
 
-            if (i < MAX_LEN - 1)
+            if (i < MAX_OBJECT_NAME_LENGTH - 1)
             {
                 token[i] = c;
                 i++;
@@ -276,10 +463,11 @@ NodeAkinator* buildTree(FILE* file)
             return NULL;
         }
 
-        NodeAkinator* newNode = (NodeAkinator*)malloc(sizeof(NodeAkinator));
-        strcpy(newNode->value, token);
-        newNode->left = buildTree(file);
-        newNode->right = buildTree(file);
+        CREAT_NODE(newNode);
+        InitializeAkinatorNode(newNode, token, NULL, NULL);
+
+        newNode->left = BuildTree(file);
+        newNode->right = BuildTree(file);
         fscanf(file, "%s", token);
         return newNode;
     }
@@ -290,7 +478,7 @@ NodeAkinator* buildTree(FILE* file)
             return NULL;
         }
 
-        NodeAkinator* newNode = (NodeAkinator*)malloc(sizeof(NodeAkinator));
+        CREAT_NODE(newNode);
         strcpy(newNode->value, token);
         newNode->left = NULL;
         newNode->right = NULL;
@@ -299,10 +487,9 @@ NodeAkinator* buildTree(FILE* file)
     }
 }
 
-int SearchingItemCharacteristics(Stack* myStack, NodeAkinator* node, const char* value)
+static int SearchingItemCharacteristics(Stack* myStack, NodeAkinator* node, const char* value)
 {
     assert(myStack);
-    assert(node);
 
     if (node == NULL)
     {
@@ -315,69 +502,54 @@ int SearchingItemCharacteristics(Stack* myStack, NodeAkinator* node, const char*
     }
 
     StackPush(myStack, 0);
-    int k = SearchingItemCharacteristics(myStack, node->left, value);
-    if (k == 1)
+    int flagCharacteristics = SearchingItemCharacteristics(myStack, node->left, value);
+    if (flagCharacteristics == 1)
     {
         return 1;
     }
     StackPop(myStack);
 
     StackPush(myStack, 1);
-    k = SearchingItemCharacteristics(myStack, node->right, value);
-    if (k == 0) StackPop(myStack);
+    flagCharacteristics = SearchingItemCharacteristics(myStack, node->right, value);
+    if (flagCharacteristics == 0) StackPop(myStack);
 
-    return k;
+    return flagCharacteristics;
 }
 
-void ObjectDefinition(TreeAkinator* tree)
+static void ObjectDefinition(TreeAkinator* tree)
 {
     assert(tree);
 
     Stack myStack = {};
     StackCtor(&myStack);
 
-    char request[100];
-    printf("Введите объект, определение которого вы хотите получить: ");
+    char request[MAX_LEN] = "";
+
+    AKINATOR_PRINT_STRING("Введите объект, определение которого вы хотите получить: ");
     scanf("%s", request);
-    size_t len = strlen(request);
-    if (len > 0 && request[len - 1] == '\n')
+    ReadObject(request);
+
+    int flagCharacteristics = SearchingItemCharacteristics(&myStack, tree->rootTree, request);
+    if (flagCharacteristics == 0)
     {
-        request[len - 1] = '\0';
+        AKINATOR_PRINT_STRING("Такого объекта нет\n");
     }
 
-    int k = SearchingItemCharacteristics(&myStack, tree->RootTree, request);
-    if (k == 0)
-    {
-        printf("Такого объекта нет\n");
-    }
-
-    printf("%s: ", request);
-    NodeAkinator* nowNode = tree->RootTree;
+    AKINATOR_PRINT_STRING("%s: ", request);
+    NodeAkinator* nowNode = tree->rootTree;
 
     for (int i = 0; i < myStack.size ; i++)
     {
         if (myStack.data[i] == 0)
         {
-            if (i ==  myStack.size - 1)
-            {
-                printf("не %s.", nowNode->value);
-            }
-            else
-            {
-                printf("не %s, ", nowNode->value);
-            }
+            //AKINATOR_PRINT_STRING("%s ", nowNode->value);
+            PrintValue(nowNode->value, i, myStack.size, WITH_NEGATION);
             nowNode = nowNode->left;
         }
         else
         {
-            if (i ==  myStack.size - 1)
-            {
-                printf("%s.", nowNode->value);
-            }
-            else
-            {
-                printf("%s, ", nowNode->value);
-            }
+            //AKINATOR_PRINT_STRING("%s ", nowNode->value);
+            PrintValue(nowNode->value, i, myStack.size, WITHOUT_NEGATION);
             nowNode = nowNode->right;
         }
     }
@@ -385,7 +557,14 @@ void ObjectDefinition(TreeAkinator* tree)
     StackDtor(&myStack);
 }
 
-void CompareObjects(TreeAkinator* tree)
+static void PrintValue(const char* value, int i, int size, int negate)
+{
+    const char* prefix = (negate) ? "не " : "";
+    const char* suffix = (i == size - 1) ? "." : ", ";
+    AKINATOR_PRINT_STRING("%s%s%s", prefix, value, suffix);
+}
+
+static void CompareObjects(TreeAkinator* tree)
 {
     assert(tree);
 
@@ -398,51 +577,53 @@ void CompareObjects(TreeAkinator* tree)
     Stack myStackComparison = {};
     StackCtor(&myStackComparison);
 
-    char request1[MAX_LEN];
-    char request2[MAX_LEN];
-    printf("Введите объекты, сравнение которых хотите получить:\n");
+    char request1[MAX_OBJECT_NAME_LENGTH] = "";
+    char request2[MAX_OBJECT_NAME_LENGTH] = "";
+
+    AKINATOR_PRINT_STRING("Введите объекты, сравнение которых хотите получить:\n");
+
     ReadObjectUntilValid(request1, tree, &myStackComp);
     ReadObjectUntilValid(request2, tree, &myStackComp2);
 
-    printf("%s\n", request1);
-    printf("%s\n", request2);
-    printf("%s и %s схожи тем, что они - ", request1, request2);
-    NodeAkinator* nowNode = tree->RootTree;
+    AKINATOR_PRINT_STRING("%s и %s схожи тем, что они - ", request1, request2);
+    NodeAkinator* nowNode = tree->rootTree;
     ProcessCompareSign(&myStackComparison, &myStackComp, &myStackComp2, &nowNode);
 
-    DistinctiveFeatureSubject(&myStackComparison, &myStackComp, nowNode, request1, "но");
-    DistinctiveFeatureSubject(&myStackComparison, &myStackComp2, nowNode, request2, "a");
+    NodeAkinator* newNode = nowNode;
+    DistinctiveFeatureSubject(&myStackComparison, &myStackComp, newNode, request1, ", но");
+    newNode = nowNode;
+    DistinctiveFeatureSubject(&myStackComparison, &myStackComp2, newNode, request2, ", a");
 }
 
-void DistinctiveFeatureSubject(Stack* myStackComparison, Stack* myStackComp, NodeAkinator* nowNode,
+static void DistinctiveFeatureSubject(Stack* myStackComparison, Stack* myStackComp, NodeAkinator* nowNode,
                                const char request[], const char* conjunction)
 {
     assert(myStackComparison);
     assert(myStackComp);
     assert(nowNode);
 
-    NodeAkinator* newNode = nowNode;
-    if (myStackComparison->size < myStackComp->size) {
-        printf("\n\n%s %s - ", conjunction, request);
+    if (myStackComparison->size < myStackComp->size)
+    {
+        AKINATOR_PRINT_STRING("%s %s - ", conjunction, request);
 
         for (int i = myStackComparison->size; i < myStackComp->size; i++)
         {
             if (myStackComp->data[i] == 0)
             {
-                printf("\"не %s\" ", newNode->value);
-                newNode = newNode->left;
+                PrintValue(nowNode->value, i, myStackComp->size, WITH_NEGATION);
+                nowNode = nowNode->left;
             }
             else
             {
-                printf("\"%s\" ", newNode->value);
-                newNode = newNode->right;
+                PrintValue(nowNode->value, i, myStackComp->size, WITHOUT_NEGATION);
+                nowNode = nowNode->right;
             }
         }
     }
 }
 
-void ProcessCompareSign(Stack* myStackComparison, Stack* myStackComp,
-                        Stack* myStackComp2, NodeAkinator** nowNode)
+static void ProcessCompareSign(Stack* myStackComparison, Stack* myStackComp,
+                               Stack* myStackComp2, NodeAkinator** nowNode)
 {
     assert(myStackComparison);
     assert(myStackComp);
@@ -455,36 +636,40 @@ void ProcessCompareSign(Stack* myStackComparison, Stack* myStackComp,
             StackPush(myStackComparison, i);
             if (myStackComp->data[i] == 0)
             {
-                printf("\"не %s\" ", (*nowNode)->value);
+                AKINATOR_PRINT_STRING("\"не %s\" ", (*nowNode)->value);
                 *nowNode = (*nowNode)->left;
             }
             else
             {
-                printf("\"%s\" ", (*nowNode)->value);
+                AKINATOR_PRINT_STRING("\"%s\" ", (*nowNode)->value);
                 *nowNode = (*nowNode)->right;
             }
+        }
+        else
+        {
+            break;
         }
     }
 }
 
-void ReadObjectUntilValid(char request[], TreeAkinator* tree, Stack* myStack)
+static void ReadObjectUntilValid(char request[], TreeAkinator* tree, Stack* myStack)
 {
     assert(tree);
     assert(myStack);
 
-    int cnt = 0;
-    do{
+    int flagCharacteristics = 0;
+    do {
+        AKINATOR_PRINT_STRING("\tВведите объект: ");
+        scanf("%s", request);
+
         ReadObject(request);
-        cnt = SearchingItemCharacteristics(myStack, tree->RootTree, request);
-        CHECKING_OBJECT(cnt, request);
-    } while (cnt == 0);
+        flagCharacteristics = SearchingItemCharacteristics(myStack, tree->rootTree, request);
+        CHECKING_OBJECT(flagCharacteristics, request);
+    } while (flagCharacteristics == 0);
 }
 
-void ReadObject(char request[])
+static void ReadObject(char request[])
 {
-    printf("\tВведите объект: ");
-    scanf("%s", request);
-
     size_t len = strlen(request);
     if (len > 0 && request[len - 1] == '\n')
     {

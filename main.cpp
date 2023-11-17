@@ -1,63 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "akinator.h"
+#include "command_args.h"
 
-int main()
+int main(int argc, char* argv[])
 {
+    CheckArgComStr(argc, argv);
+
     TreeAkinator tree = {};
-    NodeAkinator root = {};
-    tree.RootTree = &root;
-    FILE* file = fopen("printoutAK.txt", "r");
-    if (file == NULL) {
-        printf("Ошибка при открытии файла.\n");
-        return 1;
-    }
+    CtorRoot(&tree);
 
-    tree.RootTree = buildTree(file);
-    fclose(file);
+    BuildTreeFromFile(FILENAME_FOR_WORK, &tree);
 
-    PRINT_COMMAND();
-    char c;
-    scanf(" %c", &c);
-    int mode = CheckCommand(c);
-
-    do {
-        while(mode == -1)
-        {
-            printf("Некорректная команда. Пожалуйста, введите правильную команду.\n");
-            PRINT_COMMAND();
-            scanf(" %c", &c);
-            mode = CheckCommand(c);
-        }
-        switch(mode)
-        {
-            case AKINATOR:
-                Akinator(&tree.RootTree);
-                break;
-            case DELETE:
-                TreeDtor(&tree);
-                CtorInDelete(&tree);
-                break;
-            case DEFENITION:
-                ObjectDefinition(&tree);
-                break;
-            case COMPARISON:
-                CompareObjects(&tree);
-                break;
-            case SAVE:
-                SaveTreeToFile(tree.RootTree);
-                break;
-        }
-        printf("\n");
-        PRINT_COMMAND();
-
-        scanf(" %c", &c);
-        mode = CheckCommand(c);
-    } while (c != 'e');
-
-    GenerateImage(&tree);
-    CreateNewGraph();
+    RunAkinatorMenuLoop(&tree);
 
     TreeDtor(&tree);
     return 0;

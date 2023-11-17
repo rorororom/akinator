@@ -3,71 +3,63 @@
 
 #include "stack.h"
 
-const int MAX_LEN = 100;
+const int MAX_OBJECT_NAME_LENGTH = 100;
+const int MAX_LEN = 256;
 
 struct NodeAkinator {
-    char value[MAX_LEN];
+    char value[MAX_OBJECT_NAME_LENGTH];
     NodeAkinator* left;
     NodeAkinator* right;
 };
 
 
 struct TreeAkinator {
-    NodeAkinator* RootTree;
+    NodeAkinator* rootTree;
     int size;
 };
 
-enum Register
-{
-    INCORECT = -1,
+enum PrintMode {
+    WITHOUT_NEGATION = 0,
+    WITH_NEGATION
+};
+
+enum AnswerAkinator{
+    YES,
+    NO,
+    ERRROR_ANSWER
+};
+
+enum Register{
+    INCORRECT = -1,
     AKINATOR,
     DELETE,
     DEFENITION,
     COMPARISON,
     SAVE,
     EXIT,
+    PICTURE
 };
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MIN(a, b) a < b ? a : b
 #define CHECKING_OBJECT(cnt, request) if (cnt == 0) printf("Такого объекта нет: %s\n", request)
+#define CREAT_NODE(node) NodeAkinator* node = (NodeAkinator*)malloc(sizeof(NodeAkinator))
 
-#define PRINT_COMMAND()                                 \
-    printf("Команды(английскими буквами):\n"            \
-            "\t[a] - игра Акинатор,\n"                  \
-            "\t[d] - удаление базы данных,\n"           \
-            "\t[b] - построение определения объекта\n"  \
-            "\t[c] - сравнение объектов\n"              \
-            "\t[s] - сохранить изменения\n"             \
-            "\t[e] - выйти из программы\n")
+#define AKINATOR_PRINT_STRING(...)                      \
+    do{                                                 \
+        printf(__VA_ARGS__);                            \
+        AkinatorSayString(__VA_ARGS__);                 \
+    } while (0)
 
-void Akinator(NodeAkinator** nowNode);
-void PrintNodeAkinarot(NodeAkinator* node, FILE* file);
-void SaveTreeToFile(NodeAkinator* root);
+void RunAkinatorMenuLoop(TreeAkinator* tree);
+void BuildTreeFromFile(const char* filename, TreeAkinator* tree);
 
-void PrintNodeAkinarotConsol(NodeAkinator* node);
-void PrintNodeDump(FILE* dotFile, NodeAkinator* node, const char* fillColor);
-void GenerateImage(TreeAkinator* tree);
-
-NodeAkinator* buildTree(FILE* file);
-
-int CheckCommand(char c);
-
-void ObjectDefinition(TreeAkinator* tree);
-
-void CtorInDelete(TreeAkinator* tree);
-void DestroyNode(NodeAkinator* node);
+NodeAkinator* BuildTree(FILE* file);
 void TreeDtor(TreeAkinator* tree);
+void CtorRoot(TreeAkinator* tree);
 
-int SearchingItemCharacteristics(Stack* myStack, NodeAkinator* node, const char* value);
+void GenerateImage(TreeAkinator* tree);
+void GenerateGraphImage();
 
-void CompareObjects(TreeAkinator* tree);
-void ProcessCompareSign(Stack* myStackComparison, Stack* myStackComp,
-                        Stack* myStackComp2, NodeAkinator** nowNode);
-
-void DistinctiveFeatureSubject(Stack* myStackComparison, Stack* myStackComp, NodeAkinator* nowNode,
-                               const char request[], const char* conjunction);
-void ReadObject(char request[]);
-void ReadObjectUntilValid(char request[], TreeAkinator* tree, Stack* myStack);
-
-void CreateNewGraph();
+void AkinatorSayString(const char* format, ...);
 #endif
+
