@@ -210,7 +210,7 @@ void PrintNodeDump(FILE* dotFile, Node* node, const char* fillColor)
 
 void GenerateImage(Tree* tree)
 {
-    FILE* dotFile = fopen("graph.dot", "w");
+    FILE* dotFile = fopen("grapth.dot", "w");
     if (dotFile) {
         fprintf(dotFile, "digraph tree {\n");
         fprintf(dotFile, "\tnode [shape=Mrecord, style=filled, fillcolor=\"#bba6cd\", color=\"#552d7b\"];\n");

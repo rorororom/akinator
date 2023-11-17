@@ -130,6 +130,7 @@ void Akinator(NodeAkinator** nowNode)
     {
         return;
     }
+    printf("\n\nВведите [y] - да, [n] - нет\n\n");
 
     printf("Это %s?\n", (*nowNode)->value);
     char s;
@@ -141,7 +142,7 @@ void Akinator(NodeAkinator** nowNode)
     {
         if ((*nowNode)->right == NULL)
         {
-            printf("Угадал!\n");
+            printf("СЮДАААА\n");
         }
         else
         {
