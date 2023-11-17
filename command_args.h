@@ -1,3 +1,6 @@
+#ifndef COMMAND_ARGS_h
+#define COMMAND_ARGS_h
+
 extern char* FILENAME_FOR_WORK;
 extern char* FILENAME_DATA_BASE;
 extern int MODE_ARG;
@@ -10,3 +13,4 @@ enum ModeARGUMENT{
 
 void CheckArgComStr(int argc, char* argv[]);
 int CheckMode(const char* argModeFromComStr);
+#endif
