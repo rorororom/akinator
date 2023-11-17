@@ -9,12 +9,12 @@
 #include "akinator.h"
 #include "command_args.h"
 
-static void Akinator(NodeAkinator** nowNode);
-static int GetValidAnswerAkinator(NodeAkinator** nowNode);
+static void Akinator(NodeAkinator* nowNode);
+static int GetValidAnswerAkinator(NodeAkinator* nowNode);
 static int CheckAnswerAkinator(char answer);
-static void AddNewObjectToAkinator(NodeAkinator** nowNode);
+static void AddNewObjectToAkinator(NodeAkinator* nowNode);
 static int SearchingItemCharacteristics(Stack* myStack, NodeAkinator* node, const char* value);
-static void CompareAndAsk(NodeAkinator** nowNode, char newObj[], char newStr[]);
+static void CompareAndAsk(NodeAkinator* nowNode, char newObj[], char newStr[]);
 
 static void PrintCommand();
 
@@ -108,7 +108,7 @@ void RunAkinatorMenuLoop(TreeAkinator* tree)
         switch(mode)
         {
             case AKINATOR:
-                Akinator(&tree->rootTree);
+                Akinator(tree->rootTree);
                 break;
             case DELETE:
                 TreeDtor(tree);
@@ -269,38 +269,43 @@ void GenerateImage(TreeAkinator* tree)
     }
 }
 
-static void Akinator(NodeAkinator** nowNode)
+// static int Min()
+// {
+//
+// }
+
+static void Akinator(NodeAkinator* nowNode)
 {
     assert(nowNode);
 
-    if (*nowNode == NULL)
+    if (nowNode == NULL)
     {
         return;
     }
 
-    int mode = GetValidAnswerAkinator(&(*nowNode));
+    int mode = GetValidAnswerAkinator(nowNode);
 
     if (mode == YES)
     {
-        if ((*nowNode)->right == NULL)
+        if (nowNode->right == NULL)
         {
             AKINATOR_PRINT_STRING("УРА УРА\n");
         }
         else
         {
-            Akinator(&((*nowNode)->right));
+            Akinator(nowNode->right);
         }
     }
     else if (mode == NO)
     {
-        AddNewObjectToAkinator(&(*nowNode));
+        AddNewObjectToAkinator(nowNode);
     }
 }
 
-static int GetValidAnswerAkinator(NodeAkinator** nowNode)
+static int GetValidAnswerAkinator(NodeAkinator* nowNode)
 {
     printf("Введите [y] - да, [n] - нет\n");
-    AKINATOR_PRINT_STRING("Это %s?\n", &(*nowNode)->value);
+    AKINATOR_PRINT_STRING("Это %s?\n", nowNode->value);
 
     char answer = 0;
     scanf(" %c", &answer);
@@ -322,35 +327,36 @@ static int GetValidAnswerAkinator(NodeAkinator** nowNode)
     return mode;
 }
 
-static void AddNewObjectToAkinator(NodeAkinator** nowNode)
+static void AddNewObjectToAkinator(NodeAkinator* nowNode)
 {
-    if ((*nowNode)->left == NULL)
+    if (nowNode->left == NULL)
     {
         char newObj[MAX_OBJECT_NAME_LENGTH] = "";
         char newStr[MAX_OBJECT_NAME_LENGTH] = "";
 
-        CompareAndAsk(&(*nowNode), newObj, newStr);
+        CompareAndAsk(nowNode, newObj, newStr);
 
         ReadObject(newStr);
-        CREAT_NODE(newRoot);
-        InitializeAkinatorNode(newRoot, newStr, *nowNode, NULL);
+        CREAT_NODE(falseNode);
+        InitializeAkinatorNode(falseNode, nowNode->value, nullptr, nullptr);
 
-        CREAT_NODE(newObject);
-        InitializeAkinatorNode(newObject, newObj, NULL, NULL);
+        CREAT_NODE(trueNode);
+        InitializeAkinatorNode(trueNode, newObj, nullptr, nullptr);
 
-        newRoot->right = newObject;
-        *nowNode = newRoot;
+        nowNode->right = trueNode;
+        nowNode->left = falseNode;
+        strcpy(nowNode->value, newStr);
     }
     else
     {
-        if ((*nowNode)->left != NULL)
+        if (nowNode->left != NULL)
         {
-            Akinator(&((*nowNode)->left));
+            Akinator(nowNode->left);
         }
     }
 }
 
-static void CompareAndAsk(NodeAkinator** nowNode, char newObj[], char newStr[])
+static void CompareAndAsk(NodeAkinator* nowNode, char newObj[], char newStr[])
 {
     if (MODE_ARG == ARG_MARIIA)
     {
@@ -358,12 +364,12 @@ static void CompareAndAsk(NodeAkinator** nowNode, char newObj[], char newStr[])
         fgets(newObj, MAX_OBJECT_NAME_LENGTH, stdin);
 
         ReadObject(newObj);
-        AKINATOR_PRINT_STRING("Не знаю, что это. Чем %s отличается от %s?\n", newObj, &(*nowNode)->value);
+        AKINATOR_PRINT_STRING("Не знаю, что это. Чем %s отличается от %s?\n", newObj, nowNode->value);
         fgets(newStr, MAX_OBJECT_NAME_LENGTH, stdin);
     }
     else if (MODE_ARG == ARG_DED)
     {
-        AKINATOR_PRINT_STRING("Не знаю, что это. Чем твое загаданное отличается от %s?\n", &(*nowNode)->value);
+        AKINATOR_PRINT_STRING("Не знаю, что это. Чем твое загаданное отличается от %s?\n", nowNode->value);
         fgets(newStr, MAX_OBJECT_NAME_LENGTH, stdin);
 
         ReadObject(newObj);
